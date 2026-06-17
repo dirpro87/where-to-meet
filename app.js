@@ -1092,7 +1092,227 @@ function calcScores(origins, styles, requiredFacilities, strict) {
 }
 
 // ──────────────────────────────────────────────
-// 5. UI 렌더링
+// 5. 카카오 모빌리티 API 연동
+// ──────────────────────────────────────────────
+
+/** 저장된 API 키 가져오기 */
+function getApiKey() {
+  return localStorage.getItem("kakaoApiKey") || "";
+}
+
+/** API 키 저장 */
+function saveApiKey(key) {
+  localStorage.setItem("kakaoApiKey", key.trim());
+}
+
+/**
+ * 카카오 모빌리티 길찾기 API 호출
+ * @returns {Promise<{distance: number, duration: number}|null>}
+ *   distance: 미터, duration: 초 / 실패 시 null
+ */
+async function fetchKakaoRoute(originLat, originLng, destLat, destLng, apiKey) {
+  const url = `https://apis-navi.kakaomobility.com/v1/directions?`
+    + `origin=${originLng},${originLat}`
+    + `&destination=${destLng},${destLat}`
+    + `&priority=RECOMMEND`;
+  try {
+    const res = await fetch(url, {
+      headers: { "Authorization": `KakaoAK ${apiKey}` },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data.routes || data.routes[0].result_code !== 0) return null;
+    const summary = data.routes[0].summary;
+    return {
+      distance: summary.distance,   // 미터
+      duration: summary.duration,    // 초
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 여러 출발지→여행지 실제 거리를 일괄 조회한다.
+ * API 호출 간 딜레이를 두어 속도 제한을 회피한다.
+ * @param {Array} origins - 출발지 배열
+ * @param {Array} dests   - 후보 여행지 배열
+ * @param {string} apiKey
+ * @param {Function} onProgress - (완료수, 전체수) 콜백
+ * @returns {Promise<Map>} key: "출발지명-여행지명", value: {distKm, durationMin}
+ */
+async function fetchAllDistances(origins, dests, apiKey, onProgress) {
+  const cache = new Map();
+  const total = origins.length * dests.length;
+  let done = 0;
+
+  for (const dest of dests) {
+    // 한 여행지에 대해 모든 출발지 동시 요청 (출발지 수는 적으므로)
+    const promises = origins.map(async (o) => {
+      const key = `${o.name}-${dest.name}`;
+      const result = await fetchKakaoRoute(o.lat, o.lng, dest.lat, dest.lng, apiKey);
+      if (result) {
+        cache.set(key, {
+          distKm: Math.round(result.distance / 1000 * 10) / 10,
+          durationMin: Math.round(result.duration / 60),
+        });
+      }
+      done++;
+      if (onProgress) onProgress(done, total);
+    });
+    await Promise.all(promises);
+    // 여행지 사이 딜레이 (100ms) – 속도 제한 방지
+    await new Promise(r => setTimeout(r, 100));
+  }
+  return cache;
+}
+
+/**
+ * API 실제 거리를 반영하여 점수를 재계산한다.
+ */
+function recalcWithRealDist(results, origins, distCache) {
+  const totalPeople = origins.reduce((s, o) => s + o.people, 0);
+
+  for (const r of results) {
+    let hasAllDist = true;
+
+    // 출발지별 거리 정보 업데이트
+    for (const info of r.distInfos) {
+      const key = `${info.name}-${r.name}`;
+      const cached = distCache.get(key);
+      if (cached) {
+        info.realDist = cached.distKm;
+        info.durationMin = cached.durationMin;
+      } else {
+        hasAllDist = false;
+      }
+    }
+
+    if (!hasAllDist) continue; // API 실패한 곳은 기존 점수 유지
+
+    // 실제 거리로 재계산
+    const realDists = r.distInfos.map(d => d.realDist);
+    const weightedDist = r.distInfos.reduce((s, d) => s + d.realDist * d.people, 0) / totalPeople;
+
+    // 이동거리 점수
+    const distScore = Math.max(0, 100 - (weightedDist / 500) * 100);
+
+    // 이동 균형 점수
+    const meanDist = realDists.reduce((a, b) => a + b, 0) / realDists.length;
+    const variance = realDists.reduce((s, d) => s + (d - meanDist) ** 2, 0) / realDists.length;
+    const stdDev = Math.sqrt(variance);
+    const maxMinGap = Math.max(...realDists) - Math.min(...realDists);
+    const stdScore = Math.max(0, 100 - (stdDev / 150) * 100);
+    const gapScore = Math.max(0, 100 - (maxMinGap / 250) * 100);
+    const balanceScore = stdScore * 0.6 + gapScore * 0.4;
+
+    // 점수 업데이트
+    r.weightedDist = weightedDist;
+    r.distScore = Math.round(distScore);
+    r.balanceScore = Math.round(balanceScore);
+    r.useRealDist = true;
+
+    const { fun, stay, food, group } = r.scores;
+    let total =
+      balanceScore * 0.45 +
+      distScore * 0.15 +
+      fun * 0.10 +
+      stay * 0.10 +
+      food * 0.05 +
+      group * 0.15 +
+      r.styleBonus -
+      r.facilityPenalty;
+
+    r.total = Math.round(Math.max(0, Math.min(100, total)) * 10) / 10;
+  }
+
+  // 재정렬
+  results.sort((a, b) => b.total - a.total);
+  return results;
+}
+
+// ──────────────────────────────────────────────
+// 6. 카카오맵 지도 표시
+// ──────────────────────────────────────────────
+
+let kakaoMapLoaded = false;
+let kakaoMapInstance = null;
+
+/** 카카오맵 JS SDK 동적 로드 */
+function loadKakaoMapSDK(apiKey) {
+  return new Promise((resolve, reject) => {
+    if (kakaoMapLoaded) { resolve(); return; }
+    const script = document.createElement("script");
+    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&autoload=false`;
+    script.onload = () => {
+      kakao.maps.load(() => {
+        kakaoMapLoaded = true;
+        resolve();
+      });
+    };
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+/** 추천 결과를 지도에 마커로 표시 */
+async function showResultsOnMap(results, apiKey) {
+  const mapCard = $("#mapCard");
+  try {
+    await loadKakaoMapSDK(apiKey);
+    mapCard.classList.remove("hidden");
+
+    const container = $("#kakaoMap");
+    const bounds = new kakao.maps.LatLngBounds();
+
+    // 지도 생성 (또는 재사용)
+    if (!kakaoMapInstance) {
+      kakaoMapInstance = new kakao.maps.Map(container, {
+        center: new kakao.maps.LatLng(36.5, 127.8),
+        level: 12,
+      });
+    }
+
+    // 기존 오버레이 제거용: 매번 새로 그림
+    // (간단하게 지도를 다시 만듦)
+    kakaoMapInstance = new kakao.maps.Map(container, {
+      center: new kakao.maps.LatLng(36.5, 127.8),
+      level: 12,
+    });
+
+    results.forEach((r, i) => {
+      const pos = new kakao.maps.LatLng(r.lat, r.lng);
+      bounds.extend(pos);
+
+      // 커스텀 오버레이로 순위 마커 표시
+      const rank = i + 1;
+      const color = rank <= 3 ? "var(--orange)" : "var(--navy)";
+      const content = `<div style="
+        background:${rank <= 3 ? '#FF6B35' : '#1B2A4A'};
+        color:#fff; font-weight:800; font-size:12px;
+        width:28px; height:28px; border-radius:50%;
+        display:flex; align-items:center; justify-content:center;
+        border:2px solid #fff; box-shadow:0 2px 6px rgba(0,0,0,0.3);
+        font-family:sans-serif;
+      ">${rank}</div>`;
+
+      new kakao.maps.CustomOverlay({
+        map: kakaoMapInstance,
+        position: pos,
+        content: content,
+        yAnchor: 0.5,
+      });
+    });
+
+    kakaoMapInstance.setBounds(bounds, 50);
+  } catch {
+    mapCard.classList.add("hidden");
+  }
+}
+
+
+// ──────────────────────────────────────────────
+// 7. UI 렌더링
 // ──────────────────────────────────────────────
 
 const $ = (sel) => document.querySelector(sel);
@@ -1227,10 +1447,22 @@ function renderResults(results) {
     const typeTags = r.tags.map(t => `<span class="tag">${tagTypeMap[t] || t}</span>`).join("");
     const facilityTags = r.facilities.map(f => `<span class="tag facility">${f}</span>`).join("");
 
-    // 거리 테이블 행
-    const distRows = r.distInfos.map(d =>
-      `<tr><td>${d.name} (${d.people}명)</td><td>약 ${Math.round(d.dist)}km</td></tr>`
-    ).join("");
+    // 거리 테이블 행 (실제 거리 있으면 표시)
+    const distRows = r.distInfos.map(d => {
+      if (d.realDist != null) {
+        const hrs = Math.floor(d.durationMin / 60);
+        const mins = d.durationMin % 60;
+        const timeStr = hrs > 0 ? `${hrs}시간 ${mins}분` : `${mins}분`;
+        return `<tr>
+          <td>${d.name} (${d.people}명)</td>
+          <td class="api-dist">${d.realDist}km <span class="drive-badge">🚗 ${timeStr}</span></td>
+        </tr>`;
+      }
+      return `<tr>
+        <td>${d.name} (${d.people}명)</td>
+        <td class="fallback-dist">약 ${Math.round(d.dist)}km (추정)</td>
+      </tr>`;
+    }).join("");
 
     const card = document.createElement("div");
     card.className = "result-card";
@@ -1335,7 +1567,14 @@ function buildCopyText(results, origins) {
     text += `📝 ${r.intro}\n`;
     text += `💡 ${r.reason}\n`;
     r.distInfos.forEach(d => {
-      text += `  🚗 ${d.name}: 약 ${Math.round(d.dist)}km\n`;
+      if (d.realDist != null) {
+        const hrs = Math.floor(d.durationMin / 60);
+        const mins = d.durationMin % 60;
+        const timeStr = hrs > 0 ? `${hrs}시간 ${mins}분` : `${mins}분`;
+        text += `  🚗 ${d.name}: ${d.realDist}km (${timeStr})\n`;
+      } else {
+        text += `  🚗 ${d.name}: 약 ${Math.round(d.dist)}km\n`;
+      }
     });
     text += `🎢 ${r.activities.join(", ")}\n`;
     text += `🍜 ${r.foods.join(", ")}\n`;
@@ -1360,37 +1599,130 @@ function showToast(msg) {
 }
 
 // ──────────────────────────────────────────────
-// 6. 이벤트 바인딩 & 초기화
+// 9. 이벤트 바인딩 & 초기화
 // ──────────────────────────────────────────────
 
 let lastResults = [];
 let lastOrigins = [];
 
+/** API 뱃지 상태 업데이트 */
+function updateApiBadge() {
+  const badge = $("#apiBadge");
+  const key = getApiKey();
+  if (key) {
+    badge.textContent = "ON";
+    badge.classList.add("on");
+  } else {
+    badge.textContent = "OFF";
+    badge.classList.remove("on");
+  }
+}
+
 function init() {
   initOrigins();
   bindAddOrigin();
 
-  // 추천 버튼
-  $("#searchBtn").addEventListener("click", () => {
+  // ── API 설정 토글 ──
+  const apiToggleBtn = $("#apiToggleBtn");
+  const apiBody = $("#apiBody");
+  apiToggleBtn.addEventListener("click", () => {
+    const isHidden = apiBody.classList.contains("hidden");
+    apiBody.classList.toggle("hidden");
+    apiToggleBtn.textContent = isHidden ? "설정 닫기" : "설정 열기";
+  });
+
+  // API 키 불러오기
+  const keyInput = $("#kakaoApiKey");
+  keyInput.value = getApiKey();
+  updateApiBadge();
+
+  // API 키 저장
+  $("#saveKeyBtn").addEventListener("click", async () => {
+    const key = keyInput.value.trim();
+    const status = $("#apiStatus");
+    if (!key) {
+      saveApiKey("");
+      updateApiBadge();
+      status.textContent = "API 키가 제거되었습니다. 직선거리 모드로 작동합니다.";
+      status.className = "api-status";
+      return;
+    }
+    // 키 유효성 테스트 (서울→대전)
+    status.textContent = "키를 확인하는 중…";
+    status.className = "api-status";
+    const test = await fetchKakaoRoute(37.5665, 126.978, 36.3504, 127.3845, key);
+    if (test) {
+      saveApiKey(key);
+      updateApiBadge();
+      status.textContent = `✅ 연결 성공! 서울→대전 ${(test.distance/1000).toFixed(1)}km, ${Math.round(test.duration/60)}분`;
+      status.className = "api-status success";
+    } else {
+      status.textContent = "❌ API 호출 실패. 키를 다시 확인해주세요.";
+      status.className = "api-status error";
+    }
+  });
+
+  // ── 추천 버튼 (비동기) ──
+  $("#searchBtn").addEventListener("click", async () => {
     const { origins, styles, facilities, strict, count } = getInputs();
     if (origins.length === 0) {
       showToast("출발지를 추가해주세요!");
       return;
     }
-    const scored = calcScores(origins, styles, facilities, strict);
+
+    const section = $("#resultSection");
+    const loading = $("#loading");
+    const resultList = $("#resultList");
+    const mapCard = $("#mapCard");
+    const btn = $("#searchBtn");
+
+    // 1단계: 직선거리 기반 스코어링 (즉시)
+    let scored = calcScores(origins, styles, facilities, strict);
+
+    const apiKey = getApiKey();
+    if (apiKey && scored.length > 0) {
+      // 2단계: 상위 후보에 대해 실제 거리 조회
+      const candidates = scored.slice(0, Math.max(count + 5, 20)); // 여유분 포함
+
+      // UI: 로딩 표시
+      btn.disabled = true;
+      btn.textContent = "거리 계산 중… 🔄";
+      section.classList.remove("hidden");
+      resultList.innerHTML = "";
+      mapCard.classList.add("hidden");
+      loading.classList.remove("hidden");
+
+      const distCache = await fetchAllDistances(origins, candidates, apiKey, (done, total) => {
+        loading.querySelector("p").textContent =
+          `도로 거리를 계산하고 있어요… (${done}/${total})`;
+      });
+
+      // 3단계: 실제 거리로 재계산 & 재정렬
+      recalcWithRealDist(candidates, origins, distCache);
+      scored = candidates;
+
+      loading.classList.add("hidden");
+      btn.disabled = false;
+      btn.textContent = "여행지 추천받기 ✈️";
+    }
+
     lastResults = scored.slice(0, count);
     lastOrigins = origins;
     renderResults(lastResults);
+
+    // 지도 표시
+    if (apiKey && lastResults.length > 0) {
+      showResultsOnMap(lastResults, apiKey);
+    }
   });
 
-  // 복사 버튼
+  // ── 복사 버튼 ──
   $("#copyBtn").addEventListener("click", () => {
     if (lastResults.length === 0) return;
     const text = buildCopyText(lastResults, lastOrigins);
     navigator.clipboard.writeText(text).then(() => {
       showToast("클립보드에 복사되었습니다! 📋");
     }).catch(() => {
-      // 폴백: textarea 방식
       const ta = document.createElement("textarea");
       ta.value = text;
       document.body.appendChild(ta);
