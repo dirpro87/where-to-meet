@@ -550,6 +550,154 @@ select:focus, input[type="number"]:focus {
 /* ---------- 유틸리티 ---------- */
 .hidden { display: none !important; }
 
+/* ---------- API 설정 카드 ---------- */
+.api-card { padding-bottom: 0.75rem; }
+
+.api-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.api-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 100px;
+  background: var(--gray-200);
+  color: var(--gray-500);
+  margin-left: 0.4rem;
+  vertical-align: middle;
+}
+
+.api-badge.on {
+  background: var(--green);
+  color: var(--white);
+}
+
+.btn-toggle {
+  padding: 0.3rem 0.7rem;
+  background: var(--gray-100);
+  color: var(--gray-700);
+  font-size: 0.78rem;
+  border-radius: var(--radius-sm);
+}
+
+.btn-toggle:hover { background: var(--gray-200); }
+
+.api-body { margin-top: 0.75rem; }
+
+.api-guide {
+  font-size: 0.78rem;
+  color: var(--gray-700);
+  background: var(--sky);
+  padding: 0.65rem 0.8rem;
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.65rem;
+  line-height: 1.65;
+}
+
+.api-guide a {
+  color: var(--navy);
+  font-weight: 600;
+}
+
+.api-input-row {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.api-input-row input {
+  flex: 1;
+  height: 40px;
+  border: 1.5px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  padding: 0 0.6rem;
+  font-size: 0.85rem;
+  font-family: 'Courier New', monospace;
+}
+
+.api-input-row input:focus {
+  outline: none;
+  border-color: var(--orange);
+  box-shadow: 0 0 0 3px rgba(255,107,53,0.12);
+}
+
+.btn-save-key {
+  padding: 0 0.9rem;
+  background: var(--navy);
+  color: var(--white);
+  font-size: 0.82rem;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+}
+
+.btn-save-key:hover { background: var(--navy-light); }
+
+.api-status {
+  font-size: 0.78rem;
+  margin-top: 0.4rem;
+  min-height: 1.2em;
+}
+
+.api-status.success { color: var(--green); }
+.api-status.error { color: var(--red); }
+
+/* ---------- 지도 카드 ---------- */
+.map-card {
+  margin-bottom: 0.75rem;
+  padding: 0.5rem;
+  overflow: hidden;
+}
+
+/* ---------- 로딩 ---------- */
+.loading {
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3.5px solid var(--gray-200);
+  border-top-color: var(--orange);
+  border-radius: 50%;
+  margin: 0 auto 0.75rem;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading p {
+  font-size: 0.85rem;
+  color: var(--gray-500);
+}
+
+/* ---------- 소요시간 뱃지 ---------- */
+.drive-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  background: var(--sky);
+  color: var(--navy);
+  margin-left: 0.3rem;
+}
+
+.dist-table .api-dist {
+  color: var(--navy);
+  font-weight: 600;
+}
+
+.dist-table .fallback-dist {
+  color: var(--gray-400);
+  font-size: 0.72rem;
+}
+
 /* ---------- 반응형: 좁은 화면 ---------- */
 @media (max-width: 400px) {
   .hero h1 { font-size: 1.45rem; }
