@@ -188,7 +188,8 @@ select:focus, input[type="number"]:focus {
   background: var(--white);
 }
 
-.chip input[type="checkbox"] {
+.chip input[type="checkbox"],
+.chip input[type="radio"] {
   display: none;
 }
 
@@ -202,26 +203,32 @@ select:focus, input[type="number"]:focus {
   border-color: var(--navy-light);
 }
 
-/* ---------- 필터 모드 토글 ---------- */
-.filter-mode-row {
-  margin-top: 0.75rem;
-  padding-top: 0.6rem;
-  border-top: 1px solid var(--gray-100);
+/* ---------- 취향 그룹 ---------- */
+.pref-group {
+  margin-bottom: 0.75rem;
 }
 
-.toggle-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.pref-group:last-child {
+  margin-bottom: 0;
+}
+
+.pref-label {
   font-size: 0.82rem;
+  font-weight: 600;
   color: var(--gray-700);
-  cursor: pointer;
+  margin-bottom: 0.4rem;
 }
 
-.toggle-label input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  accent-color: var(--orange);
+.optional-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.12rem 0.45rem;
+  border-radius: 100px;
+  background: var(--gray-100);
+  color: var(--gray-400);
+  margin-left: 0.3rem;
+  vertical-align: middle;
 }
 
 /* ---------- 추천 개수 인라인 ---------- */
