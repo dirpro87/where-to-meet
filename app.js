@@ -1095,9 +1095,12 @@ function calcScores(origins, styles, requiredFacilities, strict) {
 // 5. 카카오 모빌리티 API 연동
 // ──────────────────────────────────────────────
 
-/** 저장된 API 키 가져오기 */
+/** 기본 내장 API 키 (도메인 제한 설정 완료) */
+const DEFAULT_API_KEY = "6051b53a6dc4ca8d41a7b3c405f67f8d";
+
+/** 저장된 API 키 가져오기 (커스텀 키가 없으면 기본 키 사용) */
 function getApiKey() {
-  return localStorage.getItem("kakaoApiKey") || "";
+  return localStorage.getItem("kakaoApiKey") || DEFAULT_API_KEY;
 }
 
 /** API 키 저장 */
@@ -1615,6 +1618,12 @@ function updateApiBadge() {
   } else {
     badge.textContent = "OFF";
     badge.classList.remove("on");
+  }
+  // 기본 키 사용 중이면 설정 안내 변경
+  const customKey = localStorage.getItem("kakaoApiKey");
+  if (!customKey && DEFAULT_API_KEY) {
+    $("#apiStatus").textContent = "✅ 기본 API 키가 내장되어 있어 바로 사용 가능합니다.";
+    $("#apiStatus").className = "api-status success";
   }
 }
 
