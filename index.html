@@ -51,35 +51,42 @@
         <button type="button" class="btn btn-add" id="addOriginBtn">+ 출발지 추가</button>
       </div>
 
-      <!-- 여행 성향 선택 -->
+      <!-- 여행 취향 선택 (선택사항) -->
       <div class="card input-card">
-        <h2 class="section-title">🎯 여행 성향</h2>
-        <p class="helper-text">원하는 여행 스타일을 모두 선택하세요 (복수 선택 가능)</p>
-        <div class="chip-group" id="travelStyleGroup">
-          <label class="chip"><input type="checkbox" value="숙소에서놀기"> 🏠 숙소에서 놀기</label>
-          <label class="chip"><input type="checkbox" value="액티비티"> 🏄 액티비티</label>
-          <label class="chip"><input type="checkbox" value="먹방"> 🍽️ 먹방</label>
-          <label class="chip"><input type="checkbox" value="자연계곡"> 🌿 자연/계곡</label>
-          <label class="chip"><input type="checkbox" value="도시술자리"> 🍻 도시형 술자리</label>
-        </div>
-      </div>
+        <h2 class="section-title">🎯 여행 취향 <span class="optional-badge">선택사항</span></h2>
+        <p class="helper-text">아무것도 안 고르면 이동시간만으로 추천해요. 고를수록 취향에 맞게 가점!</p>
 
-      <!-- 필수 숙소 조건 -->
-      <div class="card input-card">
-        <h2 class="section-title">🏨 필수 숙소 조건</h2>
-        <p class="helper-text">반드시 있어야 하는 시설을 체크하세요</p>
-        <div class="chip-group" id="facilityGroup">
-          <label class="chip"><input type="checkbox" value="수영장"> 🏊 수영장</label>
-          <label class="chip"><input type="checkbox" value="족구장"> ⚽ 족구장</label>
-          <label class="chip"><input type="checkbox" value="노래방"> 🎤 노래방</label>
-          <label class="chip"><input type="checkbox" value="바비큐"> 🔥 바비큐</label>
-          <label class="chip"><input type="checkbox" value="독채"> 🏡 독채</label>
+        <div class="pref-group">
+          <div class="pref-label">🌊 어떤 분위기?</div>
+          <div class="chip-group" id="vibeGroup">
+            <label class="chip"><input type="checkbox" value="바다"> 🏖️ 바다/해변</label>
+            <label class="chip"><input type="checkbox" value="산자연"> 🌲 산/자연</label>
+            <label class="chip"><input type="checkbox" value="도시"> 🏙️ 도시/번화가</label>
+            <label class="chip"><input type="checkbox" value="시골"> 🌾 시골/힐링</label>
+          </div>
         </div>
-        <div class="filter-mode-row">
-          <label class="toggle-label">
-            <input type="checkbox" id="strictFilter" checked>
-            <span>조건 미충족 시 제외 (해제하면 감점만)</span>
-          </label>
+
+        <div class="pref-group">
+          <div class="pref-label">🎮 뭐 하고 놀지?</div>
+          <div class="chip-group" id="activityGroup">
+            <label class="chip"><input type="checkbox" value="물놀이"> 🏄 물놀이</label>
+            <label class="chip"><input type="checkbox" value="먹방"> 🍽️ 먹방 투어</label>
+            <label class="chip"><input type="checkbox" value="술자리"> 🍻 술자리</label>
+            <label class="chip"><input type="checkbox" value="액티비티"> 🪂 액티비티</label>
+            <label class="chip"><input type="checkbox" value="관광"> 🏛️ 관광/문화</label>
+            <label class="chip"><input type="checkbox" value="휴양"> ♨️ 휴양/온천</label>
+          </div>
+        </div>
+
+        <div class="pref-group">
+          <div class="pref-label">📅 여행 시즌</div>
+          <div class="chip-group chip-group-single" id="seasonGroup">
+            <label class="chip"><input type="radio" name="season" value="봄"> 🌸 봄</label>
+            <label class="chip"><input type="radio" name="season" value="여름"> ☀️ 여름</label>
+            <label class="chip"><input type="radio" name="season" value="가을"> 🍂 가을</label>
+            <label class="chip"><input type="radio" name="season" value="겨울"> ❄️ 겨울</label>
+            <label class="chip"><input type="radio" name="season" value="" checked> 🗓️ 상관없음</label>
+          </div>
         </div>
       </div>
 
