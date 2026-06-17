@@ -1028,14 +1028,20 @@ function calcScores(origins, styles, requiredFacilities, strict) {
     // 이동거리 점수: 0km→100, 500km 이상→0 (선형)
     const distScore = Math.max(0, 100 - (weightedDist / 500) * 100);
 
-    // ── (c) 이동 균형 점수 ──
+    // ── (c) 이동 균형 점수 (핵심 지표) ──
     // 출발지별 거리의 표준편차가 작을수록 높은 점수
+    // + 최대거리-최소거리 차이도 반영하여 극단적 편차 페널티
     const dists = distInfos.map(d => d.dist);
     const meanDist = dists.reduce((a, b) => a + b, 0) / dists.length;
     const variance = dists.reduce((s, d) => s + (d - meanDist) ** 2, 0) / dists.length;
     const stdDev = Math.sqrt(variance);
-    // stdDev 0→100, 200km 이상→0
-    const balanceScore = Math.max(0, 100 - (stdDev / 200) * 100);
+    const maxMinGap = Math.max(...dists) - Math.min(...dists);
+    // 표준편차 기반 점수 (0→100, 150km 이상→0)
+    const stdScore = Math.max(0, 100 - (stdDev / 150) * 100);
+    // 최대-최소 차이 기반 점수 (0→100, 250km 이상→0)
+    const gapScore = Math.max(0, 100 - (maxMinGap / 250) * 100);
+    // 두 점수를 6:4 비율로 합산
+    const balanceScore = stdScore * 0.6 + gapScore * 0.4;
 
     // ── (d) 기본 점수 ──
     const { fun, stay, food, group } = dest.scores;
@@ -1054,14 +1060,14 @@ function calcScores(origins, styles, requiredFacilities, strict) {
     const facilityPenalty = strict ? 0 : missingFacilities.length * 12;
 
     // ── (g) 최종 점수 합산 ──
-    // 이동거리 35% + 이동균형 20% + 놀거리 15% + 숙소 15% + 먹거리 5% + 단체 10%
+    // 이동균형 45% + 이동거리 15% + 놀거리 10% + 숙소 10% + 먹거리 5% + 단체 15%
     let total =
-      distScore * 0.35 +
-      balanceScore * 0.20 +
-      fun * 0.15 +
-      stay * 0.15 +
+      balanceScore * 0.45 +
+      distScore * 0.15 +
+      fun * 0.10 +
+      stay * 0.10 +
       food * 0.05 +
-      group * 0.10 +
+      group * 0.15 +
       styleBonus -
       facilityPenalty;
 
