@@ -1770,7 +1770,7 @@ function init() {
     const apiKey = getApiKey();
     if (apiKey && scored.length > 0) {
       // 2단계: 상위 후보에 대해 실제 거리 조회
-      const candidates = scored.slice(0, Math.max(count + 5, 20)); // 여유분 포함
+      const candidates = scored.slice(0, count + 3); // 재정렬 여유분 +3개만
 
       // UI: 로딩 표시
       btn.disabled = true;
