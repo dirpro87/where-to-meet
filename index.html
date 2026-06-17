@@ -19,6 +19,31 @@
   <main class="container">
     <section class="input-section" id="inputSection">
 
+      <!-- 카카오 API 설정 -->
+      <div class="card input-card api-card">
+        <div class="api-header" id="apiToggleHeader">
+          <h2 class="section-title" style="margin-bottom:0">🔑 카카오 API 연동 <span class="api-badge" id="apiBadge">OFF</span></h2>
+          <button type="button" class="btn btn-toggle" id="apiToggleBtn">설정 열기</button>
+        </div>
+        <div class="api-body hidden" id="apiBody">
+          <p class="helper-text">
+            카카오 REST API 키를 입력하면 <strong>실제 도로 거리</strong>와 <strong>예상 소요시간</strong>을 계산합니다.<br>
+            없어도 직선거리 기반으로 정상 작동합니다.
+          </p>
+          <div class="api-guide">
+            <strong>API 키 발급 방법:</strong><br>
+            1. <a href="https://developers.kakao.com" target="_blank">developers.kakao.com</a> 접속 → 로그인<br>
+            2. 내 애플리케이션 → 애플리케이션 추가<br>
+            3. 앱 키 → <strong>REST API 키</strong> 복사
+          </div>
+          <div class="api-input-row">
+            <input type="text" id="kakaoApiKey" placeholder="REST API 키를 붙여넣으세요" autocomplete="off">
+            <button type="button" class="btn btn-save-key" id="saveKeyBtn">저장</button>
+          </div>
+          <p class="api-status" id="apiStatus"></p>
+        </div>
+      </div>
+
       <!-- 출발지 입력 -->
       <div class="card input-card">
         <h2 class="section-title">🚗 출발지 & 인원</h2>
@@ -79,6 +104,15 @@
       <div class="result-header">
         <h2 class="section-title">📍 추천 결과</h2>
         <button type="button" class="btn btn-copy" id="copyBtn">📋 결과 복사</button>
+      </div>
+      <!-- 카카오맵 지도 -->
+      <div class="card map-card hidden" id="mapCard">
+        <div id="kakaoMap" style="width:100%;height:280px;border-radius:10px;"></div>
+      </div>
+      <!-- 로딩 표시 -->
+      <div class="loading hidden" id="loading">
+        <div class="spinner"></div>
+        <p>도로 거리를 계산하고 있어요…</p>
       </div>
       <div id="resultList"></div>
     </section>
