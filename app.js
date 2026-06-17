@@ -964,6 +964,88 @@ const DESTINATIONS = [
 ];
 
 // ──────────────────────────────────────────────
+// 2-1. 자동 태그 분류 시스템
+//      기존 데이터에서 vibe/activity/season을 자동 추출한다.
+// ──────────────────────────────────────────────
+
+/** 여행지별 수동 태그 오버라이드 (자동 분류 보완) */
+const TAG_OVERRIDES = {
+  "전주 한옥마을":   { vibe:["도시"], activity:["먹방","술자리","관광"], season:["사계절"] },
+  "부산 해운대":     { vibe:["바다","도시"], activity:["물놀이","먹방","술자리"], season:["여름","사계절"] },
+  "부산 서면·남포":  { vibe:["도시"], activity:["먹방","술자리"], season:["사계절"] },
+  "대구 도심":       { vibe:["도시"], activity:["먹방","술자리"], season:["사계절"] },
+  "대전 도심":       { vibe:["도시"], activity:["먹방","술자리","휴양"], season:["사계절"] },
+  "광주 도심":       { vibe:["도시"], activity:["먹방","술자리"], season:["사계절"] },
+  "수원":            { vibe:["도시"], activity:["먹방","술자리","관광"], season:["사계절"] },
+  "제주시내":        { vibe:["도시"], activity:["먹방","술자리"], season:["사계절"] },
+  "군산":            { vibe:["도시","시골"], activity:["먹방","관광"], season:["사계절"] },
+  "목포":            { vibe:["바다","도시"], activity:["먹방"], season:["사계절"] },
+  "천안·아산":       { vibe:["도시"], activity:["먹방","술자리"], season:["사계절"] },
+  "경주":            { vibe:["시골"], activity:["먹방","관광"], season:["봄","가을","사계절"] },
+  "안동":            { vibe:["시골"], activity:["먹방","관광"], season:["가을","사계절"] },
+  "평창":            { vibe:["산자연"], activity:["액티비티","휴양"], season:["여름","겨울"] },
+  "무주":            { vibe:["산자연"], activity:["물놀이","액티비티"], season:["여름","겨울"] },
+  "아산":            { vibe:["시골"], activity:["먹방","휴양"], season:["사계절"] },
+  "이천":            { vibe:["시골"], activity:["먹방","휴양"], season:["사계절"] },
+  "충주":            { vibe:["산자연","시골"], activity:["휴양"], season:["사계절"] },
+  "세종시":          { vibe:["도시"], activity:[], season:["사계절"] },
+  "가평":            { vibe:["산자연"], activity:["물놀이","액티비티"], season:["여름","사계절"] },
+  "양평":            { vibe:["산자연","시골"], activity:["휴양"], season:["사계절"] },
+  "포천":            { vibe:["산자연"], activity:["액티비티"], season:["여름","가을"] },
+  "춘천":            { vibe:["산자연"], activity:["먹방","액티비티"], season:["사계절"] },
+  "춘천 강촌":       { vibe:["산자연"], activity:["물놀이","액티비티"], season:["여름"] },
+  "청평·남이섬":     { vibe:["산자연"], activity:["물놀이","액티비티"], season:["여름","사계절"] },
+  "홍천":            { vibe:["산자연"], activity:["물놀이"], season:["여름"] },
+  "진주":            { vibe:["도시"], activity:["먹방","관광"], season:["가을","사계절"] },
+  "담양":            { vibe:["산자연","시골"], activity:["먹방"], season:["봄","여름","사계절"] },
+  "광양":            { vibe:["산자연"], activity:["먹방"], season:["봄"] },
+  "하동":            { vibe:["산자연","시골"], activity:["먹방"], season:["봄","여름"] },
+};
+
+/**
+ * 여행지 데이터에서 vibe/activity/season을 자동 추출한다.
+ */
+function autoTagDestinations() {
+  for (const d of DESTINATIONS) {
+    // 수동 오버라이드 우선
+    if (TAG_OVERRIDES[d.name]) {
+      const o = TAG_OVERRIDES[d.name];
+      d.vibe = o.vibe; d.activity = o.activity; d.season = o.season;
+      continue;
+    }
+
+    const text = [d.name, d.region, d.intro, d.reason, ...d.activities, ...d.foods].join(" ");
+    const v = new Set(), a = new Set(), s = new Set();
+
+    // ── 분위기 ──
+    if (/해변|해수욕|바다|해안|해상|포구|섬|등대|몽돌|항|포항|을왕|협재|격포|만리포|꽃지|대천|간절곶|장호/.test(text)) v.add("바다");
+    if (/산|계곡|숲|폭포|자연|휴양림|등산|트레킹|국립공원|올레|설악|지리산|덕유|소백|주왕|월악|청량/.test(text)) v.add("산자연");
+    if (/시장|거리|번화|도심|야시장|카페거리|먹자골목|동성로|서면/.test(text)) v.add("도시");
+    if (/마을|읍성|농|전원|고택|한옥|서원|사찰|조용|느린|목장/.test(text)) v.add("시골");
+
+    // ── 활동 ──
+    if (/서핑|스노클|물놀이|수상|래프팅|카약|워터|해수욕장|투명카약/.test(text)) a.add("물놀이");
+    if (/맛집|시장|밥|국수|구이|회|찜|떡갈비|삼합|비빔밥|국밥|먹방/.test(text)) a.add("먹방");
+    if (/술|막걸리|와인|야경|바|클럽|소곡주|홍주/.test(text)) a.add("술자리");
+    if (/레일바이크|번지|패러글|루지|케이블카|ATV|스카이워크|짚라인|스노클링/.test(text)) a.add("액티비티");
+    if (/사찰|서원|유적|문화|박물|궁|성곽|역사|고분|탈춤|문학|독립기념/.test(text)) a.add("관광");
+    if (/온천|스파|힐링|휴양|풀빌라|족욕|테르메/.test(text)) a.add("휴양");
+
+    // ── 시즌 ──
+    if (/해수욕|물놀이|계곡|서핑|래프팅|수상|워터|스노클|피서/.test(text)) s.add("여름");
+    if (/스키|눈꽃|온천|빙어|겨울/.test(text)) s.add("겨울");
+    if (/벚꽃|매화|봄꽃|유채/.test(text)) s.add("봄");
+    if (/단풍|억새/.test(text)) s.add("가을");
+    if (s.size === 0) s.add("사계절");
+
+    d.vibe = [...v]; d.activity = [...a]; d.season = [...s];
+  }
+}
+
+// 초기화 시 자동 태깅 실행
+autoTagDestinations();
+
+// ──────────────────────────────────────────────
 // 3. 유틸리티 함수
 // ──────────────────────────────────────────────
 
@@ -996,25 +1078,20 @@ function roadDist(lat1, lng1, lat2, lng2) {
 /**
  * 추천 점수를 계산하고 정렬하여 반환한다.
  * @param {Array} origins  - [{ name, lat, lng, people }]
- * @param {Array} styles   - 선택된 여행 성향 배열
- * @param {Array} requiredFacilities - 필수 숙소 조건 배열
- * @param {boolean} strict - true면 조건 미충족 시 제외, false면 감점
+ * @param {Array} vibes    - 선택된 분위기 배열
+ * @param {Array} activities - 선택된 활동 배열
+ * @param {string} season  - 선택된 계절 ("" 이면 미선택)
  * @returns {Array} 점수순 정렬된 후보 배열
  */
-function calcScores(origins, styles, requiredFacilities, strict) {
+function calcScores(origins, vibes, activities, season) {
   const totalPeople = origins.reduce((s, o) => s + o.people, 0);
   if (totalPeople === 0) return [];
 
+  const hasPrefs = vibes.length > 0 || activities.length > 0 || season;
   const results = [];
 
   for (const dest of DESTINATIONS) {
-    // ── (a) 필수 시설 검사 ──
-    const missingFacilities = requiredFacilities.filter(
-      f => !dest.facilities.includes(f)
-    );
-    if (strict && missingFacilities.length > 0) continue; // 제외
-
-    // ── (b) 출발지별 거리 계산 ──
+    // ── (a) 출발지별 거리 계산 ──
     const distInfos = origins.map(o => ({
       name: o.name,
       people: o.people,
@@ -1025,51 +1102,54 @@ function calcScores(origins, styles, requiredFacilities, strict) {
     const weightedDist =
       distInfos.reduce((s, d) => s + d.dist * d.people, 0) / totalPeople;
 
-    // 이동거리 점수: 0km→100, 500km 이상→0 (선형)
+    // 이동거리 점수: 0km→100, 500km 이상→0
     const distScore = Math.max(0, 100 - (weightedDist / 500) * 100);
 
-    // ── (c) 이동 균형 점수 (핵심 지표) ──
-    // 출발지별 거리의 표준편차가 작을수록 높은 점수
-    // + 최대거리-최소거리 차이도 반영하여 극단적 편차 페널티
+    // ── (b) 이동 균형 점수 ──
     const dists = distInfos.map(d => d.dist);
     const meanDist = dists.reduce((a, b) => a + b, 0) / dists.length;
     const variance = dists.reduce((s, d) => s + (d - meanDist) ** 2, 0) / dists.length;
     const stdDev = Math.sqrt(variance);
     const maxMinGap = Math.max(...dists) - Math.min(...dists);
-    // 표준편차 기반 점수 (0→100, 150km 이상→0)
     const stdScore = Math.max(0, 100 - (stdDev / 150) * 100);
-    // 최대-최소 차이 기반 점수 (0→100, 250km 이상→0)
     const gapScore = Math.max(0, 100 - (maxMinGap / 250) * 100);
-    // 두 점수를 6:4 비율로 합산
     const balanceScore = stdScore * 0.6 + gapScore * 0.4;
 
-    // ── (d) 기본 점수 ──
-    const { fun, stay, food, group } = dest.scores;
+    // ── (c) 기본 퀄리티 점수 (놀거리·먹거리·단체 평균) ──
+    const { fun, food, group } = dest.scores;
+    const qualityScore = (fun + food + group) / 3;
 
-    // ── (e) 여행 성향 보너스 ──
-    let styleBonus = 0;
-    const matchedTags = [];
-    for (const style of styles) {
-      if (dest.tags.includes(style)) {
-        styleBonus += 8; // 매칭 태그당 8점 보너스
-        matchedTags.push(style);
+    // ── (d) 취향 보너스 (아무것도 안 고르면 0) ──
+    let prefBonus = 0;
+
+    // 분위기 매칭: 매칭당 +5점
+    for (const v of vibes) {
+      if (dest.vibe && dest.vibe.includes(v)) prefBonus += 5;
+    }
+
+    // 활동 매칭: 매칭당 +4점
+    for (const a of activities) {
+      if (dest.activity && dest.activity.includes(a)) prefBonus += 4;
+    }
+
+    // 시즌 매칭: +6점 / 미매칭 시 -3점
+    if (season) {
+      const seasonMatch = dest.season && (dest.season.includes(season) || dest.season.includes("사계절"));
+      if (seasonMatch) {
+        prefBonus += 6;
+      } else {
+        prefBonus -= 3;
       }
     }
 
-    // ── (f) 시설 미충족 감점 (strict=false일 때) ──
-    const facilityPenalty = strict ? 0 : missingFacilities.length * 12;
-
-    // ── (g) 최종 점수 합산 ──
-    // 이동균형 45% + 이동거리 15% + 놀거리 10% + 숙소 10% + 먹거리 5% + 단체 15%
+    // ── (e) 최종 점수 ──
+    // 아무것도 미선택: 이동 중심 (균형55% + 거리25% + 퀄리티20%)
+    // 취향 선택 시: 기본 점수 + 보너스로 순위 변동
     let total =
-      balanceScore * 0.45 +
-      distScore * 0.15 +
-      fun * 0.10 +
-      stay * 0.10 +
-      food * 0.05 +
-      group * 0.15 +
-      styleBonus -
-      facilityPenalty;
+      balanceScore * 0.55 +
+      distScore * 0.25 +
+      qualityScore * 0.20 +
+      prefBonus;
 
     total = Math.max(0, Math.min(100, total));
 
@@ -1079,9 +1159,8 @@ function calcScores(origins, styles, requiredFacilities, strict) {
       weightedDist,
       distScore: Math.round(distScore),
       balanceScore: Math.round(balanceScore),
-      styleBonus,
-      facilityPenalty,
-      matchedTags,
+      qualityScore: Math.round(qualityScore),
+      prefBonus,
       total: Math.round(total * 10) / 10,
     });
   }
@@ -1215,16 +1294,13 @@ function recalcWithRealDist(results, origins, distCache) {
     r.balanceScore = Math.round(balanceScore);
     r.useRealDist = true;
 
-    const { fun, stay, food, group } = r.scores;
+    const { fun, food, group } = r.scores;
+    const qualityScore = (fun + food + group) / 3;
     let total =
-      balanceScore * 0.45 +
-      distScore * 0.15 +
-      fun * 0.10 +
-      stay * 0.10 +
-      food * 0.05 +
-      group * 0.15 +
-      r.styleBonus -
-      r.facilityPenalty;
+      balanceScore * 0.55 +
+      distScore * 0.25 +
+      qualityScore * 0.20 +
+      r.prefBonus;
 
     r.total = Math.round(Math.max(0, Math.min(100, total)) * 10) / 10;
   }
@@ -1404,16 +1480,21 @@ function getInputs() {
     if (found) origins.push({ ...found, people });
   });
 
-  const styles = [];
-  $$("#travelStyleGroup input:checked").forEach(cb => styles.push(cb.value));
+  // 분위기 선택
+  const vibes = [];
+  $$("#vibeGroup input:checked").forEach(cb => vibes.push(cb.value));
 
-  const facilities = [];
-  $$("#facilityGroup input:checked").forEach(cb => facilities.push(cb.value));
+  // 활동 선택
+  const activities = [];
+  $$("#activityGroup input:checked").forEach(cb => activities.push(cb.value));
 
-  const strict = $("#strictFilter").checked;
+  // 시즌 선택 (라디오)
+  const seasonEl = document.querySelector("#seasonGroup input[name='season']:checked");
+  const season = seasonEl ? seasonEl.value : "";
+
   const count = parseInt($("#recCount").value, 10);
 
-  return { origins, styles, facilities, strict, count };
+  return { origins, vibes, activities, season, count };
 }
 
 // --- 결과 카드 렌더링 ---
@@ -1439,16 +1520,14 @@ function renderResults(results) {
     const rank = i + 1;
     const medalClass = rank === 1 ? "gold" : rank === 2 ? "silver" : rank === 3 ? "bronze" : "";
 
-    // 태그 생성
-    const tagTypeMap = {
-      "숙소에서놀기": "🏠 숙소놀기",
-      "액티비티": "🏄 액티비티",
-      "먹방": "🍽️ 먹방",
-      "자연계곡": "🌿 자연/계곡",
-      "도시술자리": "🍻 도시술자리",
-    };
-    const typeTags = r.tags.map(t => `<span class="tag">${tagTypeMap[t] || t}</span>`).join("");
-    const facilityTags = r.facilities.map(f => `<span class="tag facility">${f}</span>`).join("");
+    // 태그 생성 (새 분류 체계)
+    const vibeEmoji = { "바다":"🏖️", "산자연":"🌲", "도시":"🏙️", "시골":"🌾" };
+    const actEmoji = { "물놀이":"🏄", "먹방":"🍽️", "술자리":"🍻", "액티비티":"🪂", "관광":"🏛️", "휴양":"♨️" };
+    const seasonEmoji = { "봄":"🌸", "여름":"☀️", "가을":"🍂", "겨울":"❄️", "사계절":"🗓️" };
+
+    const vibeTags = (r.vibe || []).map(v => `<span class="tag">${vibeEmoji[v]||""} ${v}</span>`).join("");
+    const actTags = (r.activity || []).map(a => `<span class="tag">${actEmoji[a]||""} ${a}</span>`).join("");
+    const seasonTags = (r.season || []).map(s => `<span class="tag facility">${seasonEmoji[s]||""} ${s}</span>`).join("");
 
     // 거리 테이블 행 (실제 거리 있으면 표시)
     const distRows = r.distInfos.map(d => {
@@ -1488,20 +1567,16 @@ function renderResults(results) {
       <!-- 점수 바 -->
       <div class="score-bars">
         <div class="bar-item">
-          <span class="bar-label">이동</span>
-          <div class="bar-track"><div class="bar-fill" style="width:${r.distScore}%"></div></div>
-        </div>
-        <div class="bar-item">
           <span class="bar-label">균형</span>
           <div class="bar-track"><div class="bar-fill green" style="width:${r.balanceScore}%"></div></div>
         </div>
         <div class="bar-item">
-          <span class="bar-label">놀거리</span>
-          <div class="bar-track"><div class="bar-fill orange" style="width:${r.scores.fun}%"></div></div>
+          <span class="bar-label">거리</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${r.distScore}%"></div></div>
         </div>
         <div class="bar-item">
-          <span class="bar-label">숙소</span>
-          <div class="bar-track"><div class="bar-fill" style="width:${r.scores.stay}%"></div></div>
+          <span class="bar-label">놀거리</span>
+          <div class="bar-track"><div class="bar-fill orange" style="width:${r.scores.fun}%"></div></div>
         </div>
         <div class="bar-item">
           <span class="bar-label">먹거리</span>
@@ -1510,6 +1585,10 @@ function renderResults(results) {
         <div class="bar-item">
           <span class="bar-label">단체</span>
           <div class="bar-track"><div class="bar-fill green" style="width:${r.scores.group}%"></div></div>
+        </div>
+        <div class="bar-item">
+          <span class="bar-label">취향</span>
+          <div class="bar-track"><div class="bar-fill orange" style="width:${Math.max(0, Math.min(100, r.prefBonus * 4))}%"></div></div>
         </div>
       </div>
 
@@ -1542,7 +1621,7 @@ function renderResults(results) {
       </div>
 
       <!-- 태그 -->
-      <div class="tag-row">${typeTags}${facilityTags}</div>
+      <div class="tag-row">${vibeTags}${actTags}${seasonTags}</div>
     `;
 
     list.appendChild(card);
@@ -1673,7 +1752,7 @@ function init() {
 
   // ── 추천 버튼 (비동기) ──
   $("#searchBtn").addEventListener("click", async () => {
-    const { origins, styles, facilities, strict, count } = getInputs();
+    const { origins, vibes, activities, season, count } = getInputs();
     if (origins.length === 0) {
       showToast("출발지를 추가해주세요!");
       return;
@@ -1686,7 +1765,7 @@ function init() {
     const btn = $("#searchBtn");
 
     // 1단계: 직선거리 기반 스코어링 (즉시)
-    let scored = calcScores(origins, styles, facilities, strict);
+    let scored = calcScores(origins, vibes, activities, season);
 
     const apiKey = getApiKey();
     if (apiKey && scored.length > 0) {
