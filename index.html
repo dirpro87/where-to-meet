@@ -7,86 +7,86 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- ===== 헤더 ===== -->
   <header class="hero">
     <div class="hero-inner">
       <h1>어디서 만날까?</h1>
-      <p class="hero-sub">각자 출발지와 인원수만 넣으면,<br>모두가 편한 전국 여행지를 찾아드려요.</p>
+      <p class="hero-sub">출발지와 인원수만 넣으면,<br>모두가 편한 전국 여행지를 찾아드려요.</p>
     </div>
   </header>
 
-  <!-- ===== 입력 폼 영역 ===== -->
   <main class="container">
     <section class="input-section" id="inputSection">
 
       <!-- 카카오 API 설정 -->
       <div class="card input-card api-card">
         <div class="api-header" id="apiToggleHeader">
-          <h2 class="section-title" style="margin-bottom:0">🔑 카카오 API 연동 <span class="api-badge" id="apiBadge">OFF</span></h2>
-          <button type="button" class="btn btn-toggle" id="apiToggleBtn">설정 열기</button>
+          <h2 class="section-title" style="margin-bottom:0">🔑 카카오 API <span class="api-badge" id="apiBadge">OFF</span></h2>
+          <button type="button" class="btn btn-toggle" id="apiToggleBtn">설정</button>
         </div>
         <div class="api-body hidden" id="apiBody">
-          <p class="helper-text">
-            카카오 REST API 키를 입력하면 <strong>실제 도로 거리</strong>와 <strong>예상 소요시간</strong>을 계산합니다.<br>
-            없어도 직선거리 기반으로 정상 작동합니다.
-          </p>
+          <p class="helper-text">REST API 키를 입력하면 실제 도로거리 계산 + 주소 검색이 가능합니다.</p>
           <div class="api-guide">
-            <strong>API 키 발급 방법:</strong><br>
-            1. <a href="https://developers.kakao.com" target="_blank">developers.kakao.com</a> 접속 → 로그인<br>
-            2. 내 애플리케이션 → 애플리케이션 추가<br>
-            3. 앱 키 → <strong>REST API 키</strong> 복사
+            <a href="https://developers.kakao.com" target="_blank">developers.kakao.com</a> → 내 앱 → 앱 키 → <strong>REST API 키</strong> 복사
           </div>
           <div class="api-input-row">
-            <input type="text" id="kakaoApiKey" placeholder="REST API 키를 붙여넣으세요" autocomplete="off">
+            <input type="text" id="kakaoApiKey" placeholder="REST API 키" autocomplete="off">
             <button type="button" class="btn btn-save-key" id="saveKeyBtn">저장</button>
           </div>
           <p class="api-status" id="apiStatus"></p>
         </div>
       </div>
 
-      <!-- 출발지 입력 -->
+      <!-- 출발지 -->
       <div class="card input-card">
         <h2 class="section-title">🚗 출발지 & 인원</h2>
         <div id="originList"></div>
         <button type="button" class="btn btn-add" id="addOriginBtn">+ 출발지 추가</button>
       </div>
 
-      <!-- 여행 취향 선택 (선택사항) -->
+      <!-- 어디로? (필터) -->
       <div class="card input-card">
-        <h2 class="section-title">🎯 여행 취향 <span class="optional-badge">선택사항</span></h2>
-        <p class="helper-text">아무것도 안 고르면 이동시간만으로 추천해요. 고를수록 취향에 맞게 가점!</p>
-
-        <div class="pref-group">
-          <div class="pref-label">🌊 어떤 분위기?</div>
-          <div class="chip-group" id="vibeGroup">
-            <label class="chip"><input type="checkbox" value="바다"> 🏖️ 바다/해변</label>
-            <label class="chip"><input type="checkbox" value="산자연"> 🌲 산/자연</label>
-            <label class="chip"><input type="checkbox" value="도시"> 🏙️ 도시/번화가</label>
-            <label class="chip"><input type="checkbox" value="시골"> 🌾 시골/힐링</label>
-          </div>
+        <h2 class="section-title">📍 어디로?</h2>
+        <p class="helper-text">선택하면 해당 장소만 보여요. <span class="filter-badge">필터</span> 미선택 시 전체</p>
+        <div class="chip-group" id="whereGroup">
+          <label class="chip"><input type="checkbox" value="바다"> 🏖️ 바다</label>
+          <label class="chip"><input type="checkbox" value="계곡"> 🏞️ 계곡</label>
+          <label class="chip"><input type="checkbox" value="산"> ⛰️ 산</label>
+          <label class="chip"><input type="checkbox" value="섬"> 🏝️ 섬</label>
+          <label class="chip"><input type="checkbox" value="호수강"> 🌊 호수/강</label>
+          <label class="chip"><input type="checkbox" value="도시"> 🏙️ 도시</label>
+          <label class="chip"><input type="checkbox" value="시골"> 🌾 시골</label>
         </div>
+      </div>
 
-        <div class="pref-group">
-          <div class="pref-label">🎮 뭐 하고 놀지?</div>
-          <div class="chip-group" id="activityGroup">
-            <label class="chip"><input type="checkbox" value="물놀이"> 🏄 물놀이</label>
-            <label class="chip"><input type="checkbox" value="먹방"> 🍽️ 먹방 투어</label>
-            <label class="chip"><input type="checkbox" value="술자리"> 🍻 술자리</label>
-            <label class="chip"><input type="checkbox" value="액티비티"> 🪂 액티비티</label>
-            <label class="chip"><input type="checkbox" value="관광"> 🏛️ 관광/문화</label>
-            <label class="chip"><input type="checkbox" value="휴양"> ♨️ 휴양/온천</label>
-          </div>
+      <!-- 뭐하지? (가점) -->
+      <div class="card input-card">
+        <h2 class="section-title">🎮 뭐하지?</h2>
+        <p class="helper-text">선택할수록 매칭되는 곳이 순위 UP. <span class="bonus-badge">가점</span> 미선택 시 거리만 계산</p>
+        <div class="chip-group" id="whatGroup">
+          <label class="chip"><input type="checkbox" value="서핑"> 🏄 서핑</label>
+          <label class="chip"><input type="checkbox" value="래프팅"> 🚣 래프팅</label>
+          <label class="chip"><input type="checkbox" value="스노클링"> 🤿 스노클링</label>
+          <label class="chip"><input type="checkbox" value="스키"> ⛷️ 스키</label>
+          <label class="chip"><input type="checkbox" value="패러글라이딩"> 🪂 패러글라이딩</label>
+          <label class="chip"><input type="checkbox" value="레일바이크"> 🚃 레일바이크</label>
+          <label class="chip"><input type="checkbox" value="먹방"> 🍽️ 먹방</label>
+          <label class="chip"><input type="checkbox" value="술자리"> 🍻 술자리</label>
+          <label class="chip"><input type="checkbox" value="카페"> ☕ 카페</label>
+          <label class="chip"><input type="checkbox" value="온천"> ♨️ 온천</label>
+          <label class="chip"><input type="checkbox" value="놀이공원"> 🎠 놀이공원</label>
+          <label class="chip"><input type="checkbox" value="워터파크"> 🏊 워터파크</label>
         </div>
+      </div>
 
-        <div class="pref-group">
-          <div class="pref-label">📅 여행 시즌</div>
-          <div class="chip-group chip-group-single" id="seasonGroup">
-            <label class="chip"><input type="radio" name="season" value="봄"> 🌸 봄</label>
-            <label class="chip"><input type="radio" name="season" value="여름"> ☀️ 여름</label>
-            <label class="chip"><input type="radio" name="season" value="가을"> 🍂 가을</label>
-            <label class="chip"><input type="radio" name="season" value="겨울"> ❄️ 겨울</label>
-            <label class="chip"><input type="radio" name="season" value="" checked> 🗓️ 상관없음</label>
-          </div>
+      <!-- 시즌 -->
+      <div class="card input-card">
+        <h2 class="section-title">📅 시즌</h2>
+        <div class="chip-group" id="seasonGroup">
+          <label class="chip"><input type="radio" name="season" value="봄"> 🌸 봄</label>
+          <label class="chip"><input type="radio" name="season" value="여름"> ☀️ 여름</label>
+          <label class="chip"><input type="radio" name="season" value="가을"> 🍂 가을</label>
+          <label class="chip"><input type="radio" name="season" value="겨울"> ❄️ 겨울</label>
+          <label class="chip"><input type="radio" name="season" value="" checked> 🗓️ 상관없음</label>
         </div>
       </div>
 
@@ -98,25 +98,21 @@
           <option value="5" selected>5개</option>
           <option value="10">10개</option>
           <option value="15">15개</option>
-          <option value="20">20개</option>
         </select>
       </div>
 
-      <!-- 추천 버튼 -->
       <button type="button" class="btn btn-primary" id="searchBtn">여행지 추천받기 ✈️</button>
     </section>
 
-    <!-- ===== 결과 영역 ===== -->
+    <!-- 결과 -->
     <section class="result-section hidden" id="resultSection">
       <div class="result-header">
         <h2 class="section-title">📍 추천 결과</h2>
         <button type="button" class="btn btn-copy" id="copyBtn">📋 결과 복사</button>
       </div>
-      <!-- 카카오맵 지도 -->
       <div class="card map-card hidden" id="mapCard">
         <div id="kakaoMap" style="width:100%;height:280px;border-radius:10px;"></div>
       </div>
-      <!-- 로딩 표시 -->
       <div class="loading hidden" id="loading">
         <div class="spinner"></div>
         <p>도로 거리를 계산하고 있어요…</p>
@@ -124,15 +120,12 @@
       <div id="resultList"></div>
     </section>
 
-    <!-- 복사 완료 토스트 -->
-    <div class="toast hidden" id="toast">클립보드에 복사되었습니다!</div>
+    <div class="toast hidden" id="toast"></div>
   </main>
 
-  <!-- ===== 푸터 ===== -->
   <footer class="footer">
     <p>오프라인 작동 · 서버 없음 · 데이터 수집 없음</p>
   </footer>
-
   <script src="app.js"></script>
 </body>
 </html>
