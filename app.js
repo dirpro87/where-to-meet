@@ -574,22 +574,56 @@ function haversine(lat1,lng1,lat2,lng2){
 }
 function roadDist(lat1,lng1,lat2,lng2){ return haversine(lat1,lng1,lat2,lng2)*1.3 }
 
-// ──── 4. 카카오 주소 검색 ────
+// ──── 4. 카카오 주소 검색 (키워드 + 주소 동시) ────
 let searchTimer = null;
 async function searchAddress(query, apiKey){
   if(!query||query.length<2) return [];
   try{
-    const res = await fetch(`https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=5`,{
-      headers:{"Authorization":`KakaoAK ${apiKey}`}
-    });
-    if(!res.ok) return [];
-    const data = await res.json();
-    return (data.documents||[]).map(d=>({
-      name: d.place_name,
-      address: d.address_name,
-      lat: parseFloat(d.y),
-      lng: parseFloat(d.x),
-    }));
+    // 키워드 검색과 주소 검색을 동시에 시도
+    const [kwRes, addrRes] = await Promise.all([
+      fetch(`https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=3`,{
+        headers:{"Authorization":`KakaoAK ${apiKey}`}
+      }).catch(()=>null),
+      fetch(`https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(query)}&size=3`,{
+        headers:{"Authorization":`KakaoAK ${apiKey}`}
+      }).catch(()=>null),
+    ]);
+
+    const results = [];
+
+    // 주소 검색 결과 먼저 (정확한 주소 우선)
+    if(addrRes && addrRes.ok){
+      const data = await addrRes.json();
+      (data.documents||[]).forEach(d=>{
+        results.push({
+          name: d.address_name,
+          address: d.address_type === "ROAD_ADDR" ? d.road_address?.address_name || d.address_name : d.address_name,
+          lat: parseFloat(d.y),
+          lng: parseFloat(d.x),
+          type: "주소",
+        });
+      });
+    }
+
+    // 키워드 검색 결과 추가
+    if(kwRes && kwRes.ok){
+      const data = await kwRes.json();
+      (data.documents||[]).forEach(d=>{
+        // 중복 제거 (같은 좌표 건너뛰기)
+        const exists = results.some(r => Math.abs(r.lat - parseFloat(d.y)) < 0.001);
+        if(!exists){
+          results.push({
+            name: d.place_name,
+            address: d.address_name,
+            lat: parseFloat(d.y),
+            lng: parseFloat(d.x),
+            type: "장소",
+          });
+        }
+      });
+    }
+
+    return results.slice(0, 5);
   }catch{ return [] }
 }
 
@@ -757,7 +791,7 @@ function createOriginRow(defaultName="서울",defaultLat=37.5665,defaultLng=126.
     searchTimer=setTimeout(async()=>{
       const results=await searchAddress(q,key);
       if(!results.length){showPresetDropdown(acList,q,row,input);return}
-      acList.innerHTML=results.map((r,i)=>`<div class="autocomplete-item" data-i="${i}"><div class="ac-name">${r.name}</div><div class="ac-addr">${r.address}</div></div>`).join("");
+      acList.innerHTML=results.map((r,i)=>`<div class="autocomplete-item" data-i="${i}"><div class="ac-name">${r.name}${r.type?` <span style="font-size:0.65rem;color:#9CA3AF">${r.type}</span>`:""}</div>${r.address!==r.name?`<div class="ac-addr">${r.address}</div>`:""}</div>`).join("");
       acList.classList.add("show");
       acList.querySelectorAll(".autocomplete-item").forEach((el,i)=>{
         el.addEventListener("click",()=>{
